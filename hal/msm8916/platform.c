@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2016, The Linux Foundation. All rights reserved.
  * Not a Contribution.
  *
  * Copyright (C) 2013 The Android Open Source Project
@@ -882,19 +882,19 @@ static void audio_hwdep_send_cal(struct platform_data *plat_data)
     if (acdb_loader_get_calibration == NULL) {
         ALOGE("%s: ERROR. dlsym Error:%s acdb_loader_get_calibration", __func__,
            dlerror());
+        close(fd);
         return;
     }
     if (send_codec_cal(acdb_loader_get_calibration, fd) < 0)
         ALOGE("%s: Could not send anc cal", __FUNCTION__);
+    close(fd);
 }
 
 void *platform_init(struct audio_device *adev)
 {
-    char platform[PROPERTY_VALUE_MAX];
-    char baseband[PROPERTY_VALUE_MAX];
     char value[PROPERTY_VALUE_MAX];
     struct platform_data *my_data = NULL;
-    int retry_num = 0, snd_card_num = 0, key = 0;
+    int retry_num = 0, snd_card_num = 0;
     const char *snd_card_name;
     char mixer_xml_path[100],ffspEnable[PROPERTY_VALUE_MAX];
     char *cvd_version = NULL;
@@ -937,6 +937,7 @@ void *platform_init(struct audio_device *adev)
                 ALOGE("%s: Failed to init audio route controls, aborting.",
                        __func__);
                 free(my_data);
+                mixer_close(adev->mixer);
                 return NULL;
             }
             adev->snd_card = snd_card_num;
@@ -945,6 +946,7 @@ void *platform_init(struct audio_device *adev)
         }
         retry_num = 0;
         snd_card_num++;
+        mixer_close(adev->mixer);
     }
 
     if (snd_card_num >= MAX_SND_CARD) {
@@ -2176,9 +2178,7 @@ static int set_hd_voice(struct platform_data *my_data, bool state)
 int platform_set_parameters(void *platform, struct str_parms *parms)
 {
     struct platform_data *my_data = (struct platform_data *)platform;
-    char *str;
     char value[256] = {0};
-    int val;
     int ret = 0, err;
     char *kv_pairs = NULL;
 
